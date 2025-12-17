@@ -7,7 +7,6 @@ import PlantCard from './components/PlantCard';
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>(AppTab.DASHBOARD);
   
-  // Initialize state synchronously from localStorage to prevent UI flicker
   const [statuses, setStatuses] = useState<Record<string, PlantStatus>>(() => {
     const saved = localStorage.getItem('urban_jungle_statuses');
     return saved ? JSON.parse(saved) : {
@@ -28,7 +27,6 @@ const App: React.FC = () => {
   const [wateringNote, setWateringNote] = useState('');
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('urban_jungle_logs', JSON.stringify(logs));
   }, [logs]);
@@ -50,7 +48,6 @@ const App: React.FC = () => {
 
     setLogs([newLog, ...logs]);
 
-    // Update status based on meter reading
     let health: PlantStatus['health'] = 'Healthy';
     if (meterReading >= 8) health = 'Critical';
     else if (meterReading <= 2 && selectedPlantId !== 'dracaena') health = 'Needs Attention';
@@ -68,6 +65,35 @@ const App: React.FC = () => {
     setSelectedPlantId(null);
     setWateringNote('');
     setMeterReading(5);
+  };
+
+  const handleExportCsv = () => {
+    if (logs.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    const headers = ['Date', 'Plant', 'Reading', 'Notes'];
+    const csvRows = logs.map(log => {
+      const plant = PLANTS.find(p => p.id === log.plantId);
+      return [
+        log.date,
+        `"${plant?.name || log.plantId}"`,
+        log.meterReading,
+        `"${log.notes?.replace(/"/g, '""') || ''}"`
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `urban_jungle_backup_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,7 +121,7 @@ const App: React.FC = () => {
       const updatedStatuses = { ...statuses };
 
       rows.slice(1).forEach(row => {
-        const cols = row.split(',').map(c => c.trim());
+        const cols = row.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
         const plantStr = cols[plantIdx]?.toLowerCase();
         if (!plantStr) return;
         
@@ -139,7 +165,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 safe-top safe-bottom">
-      {/* iOS-friendly Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -224,14 +249,24 @@ const App: React.FC = () => {
 
         {activeTab === AppTab.LOGS && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-bold">History</h2>
-              <button 
-                onClick={() => csvInputRef.current?.click()}
-                className="bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all"
-              >
-                Import CSV
-              </button>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <button 
+                  onClick={() => csvInputRef.current?.click()}
+                  className="flex-1 sm:flex-none bg-stone-100 active:scale-95 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-stone-200"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                  Import
+                </button>
+                <button 
+                  onClick={handleExportCsv}
+                  className="flex-1 sm:flex-none bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 12m4 4V4"/></svg>
+                  Export Backup
+                </button>
+              </div>
               <input type="file" ref={csvInputRef} className="hidden" accept=".csv" onChange={handleCsvImport} />
             </div>
             
@@ -265,7 +300,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* iOS Floating Bottom Navigation */}
       <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-lg border border-stone-200 rounded-3xl px-6 py-4 md:hidden z-40 shadow-2xl flex justify-between items-center">
         {Object.values(AppTab).map(tab => (
           <button
@@ -279,7 +313,6 @@ const App: React.FC = () => {
         ))}
       </nav>
 
-      {/* Watering Modal */}
       {isWateringModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsWateringModalOpen(false)}></div>
