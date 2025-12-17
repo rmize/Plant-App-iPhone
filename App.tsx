@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AppTab, PlantStatus, WateringLogEntry } from './types';
-import { PLANTS } from './constants';
-import PlantCard from './components/PlantCard';
+import { AppTab, PlantStatus, WateringLogEntry } from './types.ts';
+import { PLANTS } from './constants.tsx';
+import PlantCard from './components/PlantCard.tsx';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>(AppTab.DASHBOARD);

@@ -14,6 +14,30 @@
     <meta name="theme-color" content="#059669">
     <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 
+    <!-- Mobile Error Reporter -->
+    <div id="error-reporter" style="display:none; position:fixed; top:0; left:0; right:0; background:#fee2e2; color:#991b1b; padding:15px; z-index:9999; font-family:monospace; font-size:12px; border-bottom:2px solid #ef4444; overflow-auto; max-height:50vh;">
+      <strong>App Error:</strong> <span id="error-message"></span>
+      <button onclick="this.parentElement.style.display='none'" style="float:right; background:none; border:none; font-weight:bold; cursor:pointer;">✕</button>
+    </div>
+    <script>
+      window.onerror = function(msg, url, lineNo, columnNo, error) {
+        var reporter = document.getElementById('error-reporter');
+        var message = document.getElementById('error-message');
+        reporter.style.display = 'block';
+        message.innerText = msg + '\nAt: ' + url + ':' + lineNo;
+        return false;
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        var reporter = document.getElementById('error-reporter');
+        var message = document.getElementById('error-message');
+        reporter.style.display = 'block';
+        message.innerText = 'Promise Rejection: ' + event.reason;
+      });
+    </script>
+
+    <!-- Transpiler for TSX in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
     <!-- Compatibility shim for older browsers/iOS -->
     <script async src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"></script>
 
@@ -47,8 +71,12 @@
 </head>
 <body class="bg-stone-50 text-stone-900">
     <div id="root"></div>
-    <!-- Load the main application module -->
-    <script type="module" src="./index.tsx"></script>
+    <!-- 
+      Load the main application module. 
+      Using type="text/babel" allows Babel to transpile the TSX.
+      data-type="module" tells Babel to treat imports as ES modules.
+    -->
+    <script type="text/babel" data-type="module" data-presets="typescript,react" src="./index.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
