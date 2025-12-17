@@ -14,10 +14,10 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "./",
   "background_color": "#fafaf9",
   "display": "standalone",
-  "scope": "/",
+  "scope": "./",
   "theme_color": "#059669",
   "description": "Professional plant care tracking and XLUX meter logging."
 }

@@ -1,9 +1,13 @@
 
 const CACHE_NAME = 'urban-jungle-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './index.tsx',
+  './App.tsx',
+  './types.ts',
+  './constants.tsx'
 ];
 
 self.addEventListener('install', (e) => {
