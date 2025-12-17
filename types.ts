@@ -31,5 +31,5 @@ export interface PlantStatus {
 export enum AppTab {
   DASHBOARD = 'dashboard',
   GUIDE = 'guide',
-  LOGS = 'logs'
+  LOGS = 'history'
 }

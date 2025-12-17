@@ -72,25 +72,17 @@ const App: React.FC = () => {
       alert("No data to export.");
       return;
     }
-
     const headers = ['Date', 'Plant', 'Reading', 'Notes'];
     const csvRows = logs.map(log => {
       const plant = PLANTS.find(p => p.id === log.plantId);
-      return [
-        log.date,
-        `"${plant?.name || log.plantId}"`,
-        log.meterReading,
-        `"${log.notes?.replace(/"/g, '""') || ''}"`
-      ].join(',');
+      return [log.date, `"${plant?.name || log.plantId}"`, log.meterReading, `"${log.notes?.replace(/"/g, '""') || ''}"`].join(',');
     });
-
     const csvContent = [headers.join(','), ...csvRows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
     link.setAttribute("download", `urban_jungle_backup_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -99,60 +91,36 @@ const App: React.FC = () => {
   const handleCsvImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       const rows = text.split('\n').filter(row => row.trim() !== '');
       if (rows.length < 2) return;
-
       const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
       const dateIdx = headers.indexOf('date');
       const plantIdx = headers.indexOf('plant');
       const readingIdx = headers.indexOf('reading');
       const notesIdx = headers.indexOf('notes');
-
       if (dateIdx === -1 || plantIdx === -1 || readingIdx === -1) {
         alert("Invalid CSV format. Required columns: Date, Plant, Reading");
         return;
       }
-
       const importedLogs: WateringLogEntry[] = [];
       const updatedStatuses = { ...statuses };
-
       rows.slice(1).forEach(row => {
         const cols = row.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
         const plantStr = cols[plantIdx]?.toLowerCase();
         if (!plantStr) return;
-        
-        const matchedPlant = PLANTS.find(p => 
-          p.name.toLowerCase().includes(plantStr) || 
-          p.id.toLowerCase().includes(plantStr)
-        );
-
+        const matchedPlant = PLANTS.find(p => p.name.toLowerCase().includes(plantStr) || p.id.toLowerCase().includes(plantStr));
         if (matchedPlant) {
           const reading = parseInt(cols[readingIdx]) || 5;
           const logDate = cols[dateIdx];
-          
-          importedLogs.push({
-            id: Math.random().toString(36).substr(2, 9),
-            plantId: matchedPlant.id,
-            date: logDate,
-            meterReading: reading,
-            notes: notesIdx !== -1 ? cols[notesIdx] : ''
-          });
-
-          if (!updatedStatuses[matchedPlant.id].lastWatered || 
-              new Date(logDate) >= new Date(updatedStatuses[matchedPlant.id].lastWatered!)) {
-            updatedStatuses[matchedPlant.id] = {
-              plantId: matchedPlant.id,
-              lastWatered: logDate,
-              health: reading >= 8 ? 'Critical' : (reading <= 2 ? 'Needs Attention' : 'Healthy')
-            };
+          importedLogs.push({ id: Math.random().toString(36).substr(2, 9), plantId: matchedPlant.id, date: logDate, meterReading: reading, notes: notesIdx !== -1 ? cols[notesIdx] : '' });
+          if (!updatedStatuses[matchedPlant.id].lastWatered || new Date(logDate) >= new Date(updatedStatuses[matchedPlant.id].lastWatered!)) {
+            updatedStatuses[matchedPlant.id] = { plantId: matchedPlant.id, lastWatered: logDate, health: reading >= 8 ? 'Critical' : (reading <= 2 ? 'Needs Attention' : 'Healthy') };
           }
         }
       });
-
       if (importedLogs.length > 0) {
         setLogs(prev => [...importedLogs, ...prev]);
         setStatuses(updatedStatuses);
@@ -163,8 +131,16 @@ const App: React.FC = () => {
     if (csvInputRef.current) csvInputRef.current.value = '';
   };
 
+  const NavIcon = ({ tab }: { tab: AppTab }) => {
+    switch(tab) {
+      case AppTab.DASHBOARD: return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>;
+      case AppTab.GUIDE: return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>;
+      case AppTab.LOGS: return <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-stone-50 safe-top safe-bottom">
+    <div className="min-h-screen bg-stone-50 safe-top safe-bottom selection:bg-emerald-100">
       <header className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg">
@@ -173,17 +149,6 @@ const App: React.FC = () => {
             </svg>
           </div>
           <h1 className="text-xl font-bold tracking-tight">Urban Jungle</h1>
-        </div>
-        <div className="hidden md:flex gap-6">
-          {Object.values(AppTab).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`text-sm font-semibold capitalize ${activeTab === tab ? 'text-emerald-600' : 'text-stone-500 hover:text-stone-900'}`}
-            >
-              {tab}
-            </button>
-          ))}
         </div>
       </header>
 
@@ -194,19 +159,10 @@ const App: React.FC = () => {
               <h2 className="text-2xl font-bold mb-5 px-1">My Collection</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {PLANTS.map(plant => (
-                  <PlantCard 
-                    key={plant.id} 
-                    plant={plant} 
-                    status={statuses[plant.id]} 
-                    onClick={() => {
-                      setSelectedPlantId(plant.id);
-                      setIsWateringModalOpen(true);
-                    }}
-                  />
+                  <PlantCard key={plant.id} plant={plant} status={statuses[plant.id]} onClick={() => { setSelectedPlantId(plant.id); setIsWateringModalOpen(true); }} />
                 ))}
               </div>
             </section>
-
             <section className="bg-stone-900 rounded-3xl p-6 text-white shadow-xl">
               <h2 className="text-xl font-bold mb-4">XLUX Meter Guide</h2>
               <div className="grid grid-cols-3 gap-3">
@@ -252,24 +208,17 @@ const App: React.FC = () => {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h2 className="text-2xl font-bold">History</h2>
               <div className="flex gap-2 w-full sm:w-auto">
-                <button 
-                  onClick={() => csvInputRef.current?.click()}
-                  className="flex-1 sm:flex-none bg-stone-100 active:scale-95 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-stone-200"
-                >
+                <button onClick={() => csvInputRef.current?.click()} className="flex-1 sm:flex-none bg-stone-100 active:scale-95 text-stone-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all border border-stone-200">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                   Import
                 </button>
-                <button 
-                  onClick={handleExportCsv}
-                  className="flex-1 sm:flex-none bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm"
-                >
+                <button onClick={handleExportCsv} className="flex-1 sm:flex-none bg-emerald-600 active:scale-95 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0L8 12m4 4V4"/></svg>
                   Export Backup
                 </button>
               </div>
               <input type="file" ref={csvInputRef} className="hidden" accept=".csv" onChange={handleCsvImport} />
             </div>
-            
             <div className="space-y-3">
               {logs.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-3xl border border-stone-200">
@@ -289,7 +238,6 @@ const App: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-stone-700">{log.meterReading} <span className="text-[10px] opacity-40">/ 10</span></div>
-                        <div className="text-[10px] text-stone-400 italic truncate max-w-[100px]">{log.notes || 'No note'}</div>
                       </div>
                     </div>
                   );
@@ -300,15 +248,15 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-lg border border-stone-200 rounded-3xl px-6 py-4 md:hidden z-40 shadow-2xl flex justify-between items-center">
+      <nav className="fixed bottom-6 left-6 right-6 bg-white/90 backdrop-blur-xl border border-stone-200 rounded-3xl px-6 py-3 z-40 shadow-2xl flex justify-between items-center max-w-sm mx-auto">
         {Object.values(AppTab).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex flex-col items-center gap-1 transition-all ${activeTab === tab ? 'text-emerald-600 scale-110' : 'text-stone-400'}`}
+            className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === tab ? 'text-emerald-600' : 'text-stone-400 hover:text-stone-600'}`}
           >
-             <div className={`w-1 h-1 rounded-full mb-1 ${activeTab === tab ? 'bg-emerald-600' : 'bg-transparent'}`}></div>
-             <span className="text-[9px] font-black uppercase tracking-[0.15em]">{tab}</span>
+             <NavIcon tab={tab} />
+             <span className="text-[10px] font-bold capitalize">{tab}</span>
           </button>
         ))}
       </nav>
@@ -318,44 +266,21 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setIsWateringModalOpen(false)}></div>
           <div className="bg-white rounded-[32px] w-full max-w-sm p-8 relative shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-10 duration-300">
             <h3 className="text-2xl font-bold mb-6">Log Session</h3>
-            
             <div className="space-y-8">
               <div>
                 <div className="flex justify-between items-end mb-4">
                   <label className="text-xs font-black uppercase tracking-widest text-stone-400">XLUX Reading</label>
                   <span className="text-4xl font-black text-emerald-600">{meterReading}</span>
                 </div>
-                <input 
-                  type="range" min="1" max="10" step="1" 
-                  value={meterReading}
-                  onChange={(e) => setMeterReading(parseInt(e.target.value))}
-                  className="w-full h-3 bg-stone-100 rounded-full appearance-none cursor-pointer accent-emerald-600"
-                />
+                <input type="range" min="1" max="10" step="1" value={meterReading} onChange={(e) => setMeterReading(parseInt(e.target.value))} className="w-full h-3 bg-stone-100 rounded-full appearance-none cursor-pointer accent-emerald-600" />
               </div>
-
               <div>
                 <label className="block text-xs font-black uppercase tracking-widest text-stone-400 mb-2">Observations</label>
-                <textarea 
-                  value={wateringNote}
-                  onChange={(e) => setWateringNote(e.target.value)}
-                  placeholder="Any new growth? Dust?"
-                  className="w-full h-24 p-4 bg-stone-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none text-sm"
-                />
+                <textarea value={wateringNote} onChange={(e) => setWateringNote(e.target.value)} placeholder="Any new growth? Dust?" className="w-full h-24 p-4 bg-stone-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 resize-none text-sm" />
               </div>
-
               <div className="flex gap-3">
-                <button 
-                  onClick={() => setIsWateringModalOpen(false)}
-                  className="flex-1 bg-stone-100 text-stone-500 font-bold py-4 rounded-2xl active:bg-stone-200 transition-colors text-sm"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleWaterPlant}
-                  className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 shadow-lg shadow-emerald-200 text-sm"
-                >
-                  Save Entry
-                </button>
+                <button onClick={() => setIsWateringModalOpen(false)} className="flex-1 bg-stone-100 text-stone-500 font-bold py-4 rounded-2xl active:bg-stone-200 transition-colors text-sm">Cancel</button>
+                <button onClick={handleWaterPlant} className="flex-1 bg-emerald-600 text-white font-bold py-4 rounded-2xl active:bg-emerald-700 shadow-lg shadow-emerald-200 text-sm">Save Entry</button>
               </div>
             </div>
           </div>
